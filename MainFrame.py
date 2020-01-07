@@ -33,10 +33,6 @@ class MainFrame(tk.Tk):
     def __init__(self):
         super(MainFrame, self).__init__()
 
-        self.title("Image Annotator")
-        #self.iconbitmap('xxx.ico')
-        #self.geometry()
-        self.resizable()
         # 指定したディレクトリと画像リスト
         self.dir = None
         self.anno_dir = None
@@ -45,6 +41,8 @@ class MainFrame(tk.Tk):
         # 左右クリック中の状態
         self.isLeftDown = False
         self.isRightDown = False
+        # キャンバス上描画可能
+        self.isDrawable = False
         # 画像をグローバル？に保持しておかないと、open/create_imageしてもメモリ解放されてしまい表示できない。
         # [Todo] ファイル管理は別にまとめたほうがよさそう？
         self.ref_id = None
@@ -59,6 +57,11 @@ class MainFrame(tk.Tk):
         self.brush_size = 1
         self.COLORS = {'FG': (255), 'BG': (0), 'HIGHLIGHT': (255, 0, 0)}
 
+        # フレーム関係
+        self.title("Image Annotator")
+        #self.iconbitmap('xxx.ico')
+        #self.geometry()
+        self.resizable()
         # UI生成
         self.set_widgets()
 
@@ -121,6 +124,10 @@ class MainFrame(tk.Tk):
         self.listbox.configure(selectmode="single")
         self.listbox.pack()
         self.listbox.bind('<<ListboxSelect>>', self.listbox_selected)
+        self.switch_btn_text = tk.StringVar()
+        self.switch_btn_text.set("To Org")
+        self.switch_btn = tk.Button(self.f_canvas, textvariable=self.switch_btn_text, command=self.on_switch_btn_pressed)
+        self.switch_btn.pack()
 
         # 次・前ボタン
         self.fr_btn = tk.Frame(self)
@@ -178,6 +185,7 @@ class MainFrame(tk.Tk):
 
                 self.ref_id = 0
                 self.load_image()
+                self.isDrawable = True
 
 
     def on_left_clicked(self, event):
@@ -192,6 +200,7 @@ class MainFrame(tk.Tk):
         """
         self.isLeftDown = True 
         if self.ref_image_edit == None: return 
+        if not self.isDrawable: return
         
         self.data_list[self.ref_id].isEditted = True
         self.draw_point(event.x, event.y)
@@ -221,6 +230,7 @@ class MainFrame(tk.Tk):
         """
         self.isRightDown = True
         if self.ref_image_edit == None: return
+        if not self.isDrawable: return
         
         self.data_list[self.ref_id].isEditted = True
         self.erase_point(event.x, event.y)
@@ -255,6 +265,9 @@ class MainFrame(tk.Tk):
 
         # 画面外存在時の対応
         if not self.is_within_image_size(px, py, self.ref_image_org.width, self.ref_image_org.height): return 
+
+        # アノテーション・オリジナル切り替え時対応
+        if not self.isDrawable: return
 
         # 左右クリックによって描画・消去処理
         if self.isLeftDown:
@@ -418,6 +431,19 @@ class MainFrame(tk.Tk):
         self.entry_pagejump.delete(0, tk.END)
 
 
+    def on_switch_btn_pressed(self):
+        if self.isDrawable: # アノテーション画像が表示されている状態
+            self.isDrawable = False
+            # オリジナル画像の表示
+            self.switch_btn_text.set("To Ann")
+            self.show_org_image()
+
+        else: # オリジナル画像が表示されている状態
+            self.isDrawable = True
+            # アノテーション画像の表示
+            self.switch_btn_text.set("To Org")
+            self.show_images()
+
     def load_image(self):
         """
         現在idの参照・アノテーション画像をキャンバスに表示する。
@@ -463,6 +489,14 @@ class MainFrame(tk.Tk):
 
         self.ann_image_display = ImageTk.PhotoImage(self.ann_image_edit)
         self.canvas_ann.create_image(0,0,anchor="nw", image=self.ann_image_display)
+
+
+    def show_org_image(self):
+        """
+        オリジナル画像をImageTkに変換して表示する。
+        """
+        self.ref_image_display = ImageTk.PhotoImage(self.ref_image_org)
+        self.canvas_ref.create_image(0,0,anchor="nw",image=self.ref_image_display)
 
 
     def get_annotation_filepath(self):
