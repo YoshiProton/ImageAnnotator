@@ -54,8 +54,14 @@ class MainFrame(tk.Tk):
         self.ann_image_edit = None
         self.ann_image_display = None
         # ブラシ関連
-        self.brush_size = 1
-        self.COLORS = {'FG': (255), 'BG': (0), 'HIGHLIGHT': (255, 0, 0)}
+        self.brush_size = 2
+        self.colorlist = {'Red' : (255, 0, 0), 
+                        'Green' : (0, 255, 0), 
+                        'Blue' : (0, 0, 255), 
+                        'Cyan' : (0, 255, 255), 
+                        'Magenta' : (255, 0, 255),
+                        'Yellow' : (255, 255, 0)}
+        self.COLORS = {'FG': (255), 'BG': (0), 'HIGHLIGHT': self.colorlist['Red']} #default color: Red
 
         # フレーム関係
         self.title("Image Annotator")
@@ -120,13 +126,22 @@ class MainFrame(tk.Tk):
         self.lf_listbox.pack()
         brushsize = ("1", "2", "3", "4", "5")
         brushlistvar = tk.StringVar(value=brushsize)
-        self.listbox = tk.Listbox(self.lf_listbox, listvariable=brushlistvar, width=10, height=5)
+        self.listbox = tk.Listbox(self.lf_listbox, listvariable=brushlistvar, width=10, height=len(brushsize))
         self.listbox.configure(selectmode="single")
         self.listbox.pack()
         self.listbox.bind('<<ListboxSelect>>', self.listbox_selected)
+        #
+        self.lf_colorlistbox = tk.LabelFrame(self.f_canvas, text='Color')
+        self.lf_colorlistbox.pack()
+        colorlistvar = tk.StringVar(value=tuple(self.colorlist.keys()))
+        self.colorlistbox =tk.Listbox(self.lf_colorlistbox, listvariable=colorlistvar, width=10, height=len(self.colorlist))
+        self.colorlistbox.configure(selectmode="single")
+        self.colorlistbox.pack()
+        self.colorlistbox.bind('<<ListboxSelect>>', self.colorlistbox_selected)
+        #
         self.switch_btn_text = tk.StringVar()
         self.switch_btn_text.set("To Org")
-        self.switch_btn = tk.Button(self.f_canvas, textvariable=self.switch_btn_text, command=self.on_switch_btn_pressed)
+        self.switch_btn = tk.Button(self.f_canvas, textvariable=self.switch_btn_text, width=10, command=self.on_switch_btn_pressed)
         self.switch_btn.pack()
 
         # 次・前ボタン
@@ -361,8 +376,30 @@ class MainFrame(tk.Tk):
             状態はlistbox自体が持つため、その値を利用
         """
         for i in self.listbox.curselection():
-            #print(self.listbox.get(i))
             self.brush_size = int(self.listbox.get(i))
+
+
+    def colorlistbox_selected(self, event):
+        """
+        カラーリストボックスから、HIGHLIGHTカラーを選択設定するイベント
+
+        parameters
+        ------
+        event: event
+            状態はlistbox自体が持つため、その値を利用
+        """
+        for i in self.colorlistbox.curselection():
+            selectedcolor = self.colorlistbox.get(i)
+            self.COLORS['HIGHLIGHT'] = self.colorlist[selectedcolor]
+
+        ### 画像の更新
+        # 現在の状態の保存
+        # 画像の再読み込みと表示
+        if self.ref_id == None: return
+        if self.data_list[self.ref_id].isEditted:
+            self.ann_image_edit.save(self.get_annotation_filepath())
+            self.data_list[self.ref_id].isEditted = False
+        self.load_image()
 
 
     def on_next_btn_pressed(self):
